@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Admin · CONJOAAD 2027</title>
+<style>
+:root{--navy:#0A1A3F;--anil:#4071B6;--sky:#ABCCE1;--mist:#E6F1FA;--gold:#E2B33C;--ok:#1f8a4c;--bad:#b3261e}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,sans-serif;background:var(--mist);color:var(--navy)}
+[hidden]{display:none!important}
+header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+header b{letter-spacing:.08em}header small{color:var(--sky)}
+button,select,input{font:inherit}
+button{background:var(--anil);color:#fff;border:0;padding:8px 14px;border-radius:8px;cursor:pointer}
+button.ghost{background:transparent;border:1px solid var(--sky);color:#fff}
+button.gold{background:var(--gold);color:var(--navy);font-weight:700}
+input,select{padding:9px 10px;border:1px solid var(--sky);border-radius:8px;background:#fff;color:var(--navy)}
+#login{max-width:360px;margin:12vh auto;background:#fff;padding:28px;border-radius:16px;display:grid;gap:12px}
+#login h1{margin:0;font-size:1.3rem}.err{color:var(--bad);min-height:1.2em;font-size:.9rem}
+main{padding:20px;max-width:1300px;margin:auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.card{background:#fff;border-radius:12px;padding:12px 16px}.card small{color:var(--anil)}.card b{display:block;font-size:1.4rem}
+.tools{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.tools input{flex:1;min-width:180px}
+.wrap{overflow-x:auto;background:#fff;border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:980px}th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--mist);vertical-align:top}
+th{background:var(--navy);color:#fff;font-size:.8rem;letter-spacing:.04em;position:sticky;top:0}
+td small{display:block;color:#5b6b8c}
+.tag{padding:2px 10px;border-radius:99px;font-size:.8rem;font-weight:700}
+.t-pendente{background:#fff2b3}.t-confirmado{background:#cdeedb;color:var(--ok)}.t-recusado{background:#f8d7d4;color:var(--bad)}
+h2{font-size:1.1rem;margin:26px 0 8px}.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.sum div{background:#fff;border-radius:12px;padding:12px 16px}
+</style>
+</head>
+<body>
+<section id="login">
+ <h1>Admin · CONJOAAD 2027</h1>
+ <input id="em" type="email" placeholder="E-mail" autocomplete="username">
+ <input id="pw" type="password" placeholder="Senha" autocomplete="current-password">
+ <button id="go" class="gold">Entrar</button>
+ <div class="err" id="err"></div>
+</section>
+
+<div id="app" hidden>
+ <header><div><b>CONJOAAD 2027 · PEDIDOS</b><br><small id="who"></small></div><div><button class="ghost" id="reload">Atualizar</button> <button class="ghost" id="csv">Exportar CSV</button> <button class="ghost" id="out">Sair</button></div></header>
+ <main>
+  <div class="cards" id="cards"></div>
+  <div class="tools">
+   <input id="q" placeholder="Buscar por nome, CPF, telefone ou e-mail">
+   <select id="fc"><option value="">Todas as congregações</option></select>
+   <select id="fs"><option value="">Todos os status</option><option value="pendente">Entrada pendente</option><option value="confirmado">Entrada confirmada</option><option value="recusado">Recusado</option></select>
+  </div>
+  <div class="wrap"><table><thead><tr><th>Data</th><th>Comprador</th><th>Congregação</th><th>CPF</th><th>Modelo e itens</th><th>Total</th><th>Entrada (50%)</th><th>Comprovante</th><th>Saldo pago</th><th>Retirado</th></tr></thead><tbody id="tb"></tbody></table></div>
+  <h2>Resumo por congregação</h2><div class="sum" id="bycong"></div>
+  <h2>Produção por modelo</h2><div class="sum" id="bymod"></div>
+ </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL="https://wlrzmkkltnvzqcoejkbw.supabase.co";
+const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indscnpta2tsdG52enFjb2Vqa2J3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1ODQzNDYsImV4cCI6MjExMTE2MDM0Nn0.Q3mgRTomlnAigxSZLf2zPOF3CY1san5m0UcdOhIlKAk";
+const ADMINS=["chrystians057@gmail.com","mendoncalucas155@gmail.com"];
+const BUCKET="comprovante-conjoaad";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const brl=n=>Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const cpf=s=>String(s||"").replace(/\D/g,"").replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4");
+let rows=[];
+
+function showLogin(){$("#login").hidden=false;$("#app").hidden=true}
+async function boot(){
+ const {data:{session}}=await sb.auth.getSession();
+ if(session&&ADMINS.includes(session.user.email)){$("#who").textContent=session.user.email;$("#login").hidden=true;$("#app").hidden=false;load()}else{if(session)await sb.auth.signOut();showLogin()}
+}
+$("#go").onclick=async()=>{
+ $("#err").textContent="";
+ const {data,error}=await sb.auth.signInWithPassword({email:$("#em").value.trim(),password:$("#pw").value});
+ if(error){$("#err").textContent="E-mail ou senha inválidos.";return}
+ if(!ADMINS.includes(data.user.email)){await sb.auth.signOut();$("#err").textContent="Acesso não autorizado.";return}
+ $("#pw").value="";boot();
+};
+$("#out").onclick=async()=>{await sb.auth.signOut();rows=[];showLogin()};
+$("#reload").onclick=load;
+
+async function load(){
+ const {data,error}=await sb.from("compradores").select("*, pagamentos(*)").order("created_at",{ascending:false});
+ if(error){alert("Erro ao carregar: "+error.message);return}
+ rows=data||[];
+ const cs=[...new Set(rows.map(r=>r.congregacao).filter(Boolean))].sort();
+ const cur=$("#fc").value;$("#fc").innerHTML='<option value="">Todas as congregações</option>'+cs.map(c=>`<option>${esc(c)}</option>`).join("");$("#fc").value=cur;
+ render();
+}
+const pg=r=>(r.pagamentos||[])[0]||{};
+function filtered(){
+ const q=$("#q").value.toLowerCase().trim(),fc=$("#fc").value,fs=$("#fs").value;
+ return rows.filter(r=>(!fc||r.congregacao===fc)&&(!fs||pg(r).status===fs)&&(!q||[r.nome,r.cpf,r.telefone,r.email].join(" ").toLowerCase().includes(q)));
+}
+function render(){
+ const L=filtered();
+ let total=0,rec=0;
+ L.forEach(r=>{total+=Number(r.total||0);const p=pg(r);if(p.status==="confirmado")rec+=Number(p.valor_pago||0);if(r.saldo_pago)rec+=Number(r.total||0)-Number(r.total||0)/2});
+ $("#cards").innerHTML=[["Pedidos",L.length],["Valor total",brl(total)],["Recebido",brl(rec)],["A receber",brl(total-rec)],["Entradas pendentes",L.filter(r=>pg(r).status==="pendente").length]].map(([a,b])=>`<div class="card"><small>${a}</small><b>${esc(b)}</b></div>`).join("");
+ $("#tb").innerHTML=L.map(r=>{const p=pg(r),st=p.status||"pendente";
+  const itens=[r.qtd_kits&&r.qtd_kits+" kit(s)",r.qtd_agendas&&r.qtd_agendas+" agenda(s)",r.qtd_garrafas&&r.qtd_garrafas+" garrafa(s)",r.qtd_toalhas&&r.qtd_toalhas+" toalha(s)"].filter(Boolean).join(", ");
+  return `<tr><td>${esc(new Date(r.created_at).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}))}</td>
+  <td><b>${esc(r.nome)}</b><small>${esc(r.telefone)}</small><small>${esc(r.email)}</small></td>
+  <td>${esc(r.congregacao)}</td><td>${esc(cpf(r.cpf))}</td>
+  <td>${esc(r.modelo)}<small>${esc(itens)}</small></td><td>${esc(brl(r.total))}</td>
+  <td>${esc(brl(p.valor_pago))}<br>${p.id?`<select data-act="status" data-id="${esc(p.id)}">${["pendente","confirmado","recusado"].map(s=>`<option ${s===st?"selected":""}>${s}</option>`).join("")}</select>`:'<span class="tag">sem pagamento</span>'}</td>
+  <td>${p.comprovante_path?`<button data-act="proof" data-path="${esc(p.comprovante_path)}">Abrir</button>`:"—"}</td>
+  <td><input type="checkbox" data-act="saldo" data-id="${esc(r.id)}" ${r.saldo_pago?"checked":""}></td>
+  <td><input type="checkbox" data-act="ret" data-id="${esc(r.id)}" ${r.retirado?"checked":""}></td></tr>`}).join("")||'<tr><td colspan="10">Nenhum pedido.</td></tr>';
+ const bc={},bm={};
+ L.forEach(r=>{const c=bc[r.congregacao||"—"]??={n:0,k:0,a:0,g:0,t:0};c.n++;c.k+=r.qtd_kits||0;c.a+=(r.qtd_kits||0)+(r.qtd_agendas||0);c.g+=(r.qtd_kits||0)+(r.qtd_garrafas||0);c.t+=(r.qtd_kits||0)+(r.qtd_toalhas||0);
+  const m=bm[r.modelo||"—"]??={n:0,a:0,g:0,t:0};m.n++;m.a+=(r.qtd_kits||0)+(r.qtd_agendas||0);m.g+=(r.qtd_kits||0)+(r.qtd_garrafas||0);m.t+=(r.qtd_kits||0)+(r.qtd_toalhas||0)});
+ $("#bycong").innerHTML=Object.entries(bc).sort().map(([k,v])=>`<div><b>${esc(k)}</b><br>${v.n} pedido(s) · ${v.k} kit(s)<br>Agendas ${v.a} · Garrafas ${v.g} · Toalhas ${v.t}</div>`).join("")||"<div>Sem dados.</div>";
+ $("#bymod").innerHTML=Object.entries(bm).sort().map(([k,v])=>`<div><b>${esc(k)}</b><br>${v.n} pedido(s)<br>Agendas ${v.a} · Garrafas ${v.g} · Toalhas ${v.t}</div>`).join("")||"<div>Sem dados.</div>";
+}
+["q","fc","fs"].forEach(i=>$("#"+i).oninput=render);
+
+document.addEventListener("click",async e=>{
+ const b=e.target.closest('button[data-act="proof"]');if(!b)return;
+ const w=window.open("about:blank","_blank");
+ const {data,error}=await sb.storage.from(BUCKET).createSignedUrl(b.dataset.path,120);
+ if(error){w&&w.close();alert("Não foi possível abrir o comprovante.");return}
+ w.location=data.signedUrl;
+});
+document.addEventListener("change",async e=>{
+ const t=e.target,a=t.dataset.act;if(!a)return;
+ let r;
+ if(a==="status")r=await sb.from("pagamentos").update({status:t.value}).eq("id",t.dataset.id);
+ if(a==="saldo")r=await sb.from("compradores").update({saldo_pago:t.checked}).eq("id",t.dataset.id);
+ if(a==="ret")r=await sb.from("compradores").update({retirado:t.checked}).eq("id",t.dataset.id);
+ if(r&&r.error){alert("Erro ao salvar: "+r.error.message)}
+ load();
+});
+$("#csv").onclick=()=>{
+ const safe=v=>{v=String(v??"");if(/^[=+\-@\t\r]/.test(v))v="'"+v;return '"'+v.replace(/"/g,'""')+'"'};
+ const H=["Data","Nome","CPF","E-mail","Telefone","Congregação","Modelo","Kits","Agendas","Garrafas","Toalhas","Total","Entrada paga","Status entrada","Saldo pago","Retirado"];
+ const lines=[H.map(safe).join(";")].concat(filtered().map(r=>{const p=pg(r);return [r.created_at,r.nome,r.cpf,r.email,r.telefone,r.congregacao,r.modelo,r.qtd_kits,r.qtd_agendas,r.qtd_garrafas,r.qtd_toalhas,r.total,p.valor_pago,p.status,r.saldo_pago?"Sim":"Não",r.retirado?"Sim":"Não"].map(safe).join(";")}));
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+lines.join("\n")],{type:"text/csv;charset=utf-8"}));a.download="pedidos-conjoaad.csv";a.click();
+};
+boot();
+</script>
+</body>
+</html>

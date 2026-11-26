@@ -119,6 +119,8 @@ select{width:100%;margin-top:6px;padding:13px 14px;font:inherit;background:var(-
 .chk{display:flex;gap:10px;align-items:flex-start;font-size:.85rem;color:var(--sky);margin:16px 0 18px}.chk input{width:auto;margin-top:4px}
 input[type=file]{padding:10px}.pform .btn{justify-self:start}
 #consulta{padding-top:60px}
+.pay label{display:flex;align-items:center;gap:10px;margin:0;color:var(--text)}
+input[type=radio],input[type=checkbox]{width:auto;margin:0;padding:0;flex:none;accent-color:var(--gold)}
 </style>
 </head>
 <body>
@@ -193,7 +195,7 @@ input[type=file]{padding:10px}.pform .btn{justify-self:start}
   <label class="f">CPF<input id="f-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" autocomplete="off" required></label>
   <label class="f">E-mail<input id="f-email" type="email" autocomplete="email" maxlength="160" required></label>
   <label class="f">Telefone com DDD<input id="f-tel" type="tel" inputmode="tel" maxlength="16" autocomplete="tel" required></label>
-  <label class="f">Congregação onde vai retirar<select id="f-cong" required><option value="">Selecione</option><option>Parque das Árvores</option><option>Parque das Árvores 2</option><option>Aracauã</option><option>Acauã</option><option>Village 1</option><option>Village 2</option><option>Village 3</option><option>Village 4</option><option>Village 5</option><option>Village 6</option><option>Village 7</option><option>Village 8</option><option>Paulo Holanda</option></select></label>
+  <label class="f">Congregação onde vai retirar<select id="f-cong" required><option value="">Selecione</option><option>Parque das Árvores</option><option>Parque das Árvores 2</option><option>Aracauã</option><option>Acauã</option><option>Village 1</option><option>Village 2</option><option>Village 3</option><option>Village 4</option><option>Village 5</option><option>Village 6</option><option>Village 7</option><option>Village 8</option><option>Paulo Holanda</option><option>Graciliano Ramos</option></select></label>
   <fieldset class="pay"><legend>Quanto você pagou no Pix?</legend>
    <label><input type="radio" name="pay" value="half" checked> Entrada de 50% (<b id="p-half"></b>)</label>
    <label><input type="radio" name="pay" value="total"> Valor total (<b id="p-total"></b>)</label>
